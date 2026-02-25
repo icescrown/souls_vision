@@ -1,0 +1,17 @@
+# MinGW-w64 工具链配置
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR AMD64)
+
+# 指定编译器
+set(CMAKE_C_COMPILER C:/msys64/ucrt64/bin/gcc.exe)
+set(CMAKE_CXX_COMPILER C:/msys64/ucrt64/bin/g++.exe)
+set(CMAKE_RC_COMPILER C:/msys64/ucrt64/bin/windres.exe)
+
+# 指定查找路径
+set(CMAKE_FIND_ROOT_PATH C:/msys64/ucrt64)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# 使用 Ninja 生成器
+set(CMAKE_GENERATOR Ninja)
