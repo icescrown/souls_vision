@@ -5,8 +5,6 @@
 #ifndef SOULS_VISION_SHARED_TYPES_H
 #define SOULS_VISION_SHARED_TYPES_H
 
-#include <d3d12.h>
-#include <imgui.h>
 #include <string>
 
 namespace souls_vision {
@@ -26,16 +24,19 @@ enum class BarType {
 };
 
 struct TextureInfo {
-    ID3D12Resource* textureResource = nullptr;
+    void* textureResource = nullptr;
     int index = -1;
     int width = 0;
     int height = 0;
-    D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle;
 };
 
 struct BarSettings {
-    ImVec2 position;
-    ImVec2 size;
+    struct Vec2 {
+        float x = 0;
+        float y = 0;
+    };
+    Vec2 position;
+    Vec2 size;
     float currentValue = 0;
     float maxValue = 1;
     bool hideText;
@@ -70,7 +71,7 @@ struct BarConfig {
     float currentValue;
     float maxValue;
     const char* textureName;
-    ImColor barColor = IM_COL32(255, 255, 255, 255);
+    unsigned int barColor = 0xFFFFFFFF;
     int decimals = 0;
     bool isEffect = false;
     bool condition = true;
@@ -80,10 +81,15 @@ struct BarToRender {
     BarSettings settings;
     TextureInfo textureInfo;
     BarConfig config;
-    ImU32 barColor;
+    unsigned int barColor;
     int decimals = 0;
 };
 
-} // souls_vision
+struct Size {
+    int width;
+    int height;
+};
 
-#endif //SOULS_VISION_SHARED_TYPES_H
+} // namespace souls_vision
+
+#endif // SOULS_VISION_SHARED_TYPES_H

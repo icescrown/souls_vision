@@ -1,14 +1,2 @@
-add_subdirectory(minhook)
-add_subdirectory(imgui)
-
-target_link_libraries(souls_vision PRIVATE minhook)
-target_include_directories(souls_vision PRIVATE minhook/include)
-
-target_link_libraries(souls_vision PRIVATE imgui imgui_backends)
-target_include_directories(souls_vision PRIVATE imgui)
-
-target_include_directories(souls_vision PRIVATE stb_image)
-
-target_include_directories(souls_vision PRIVATE nlohmann_json/single_include)
-
-target_include_directories(souls_vision PRIVATE tomlplusplus)
+# third_party目录现在只包含minhook
+# minhook已经在主CMakeLists.txt中直接添加

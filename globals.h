@@ -9,14 +9,9 @@
 #include <atomic>
 #include <cstdint>
 #include <string>
-#include "imgui.h"
+#include "shared_types.h"
 
 namespace souls_vision {
-
-struct Size {
-    int width;
-    int height;
-};
 
 extern const wchar_t* gWindowClass;
 extern HMODULE gModule;
@@ -26,6 +21,6 @@ extern std::string gDllPath;
 extern std::string gConfigFilePath;
 extern std::atomic_bool gRunning;
 
-}
+} // namespace souls_vision
 
 #endif //SOULS_VISION_GLOBALS_H

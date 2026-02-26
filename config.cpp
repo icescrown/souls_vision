@@ -6,15 +6,17 @@
 #include "globals.h"
 
 #include <regex>
+#include <set>
+#include <filesystem>
 #include <toml.hpp>
 
 namespace souls_vision {
 
 Components Config::components;
 BarSettings Config::statBarSettings;
-ImVec2 Config::bestEffectIconSize = ImVec2(39, 33);
-ImVec2 Config::dmgTypeIconSize = ImVec2(30, 30);
-ImVec2 Config::effectBarIconSize = ImVec2(56, 48);
+float Config::bestEffectIconSize = 39.0f;
+float Config::dmgTypeIconSize = 30.0f;
+float Config::effectBarIconSize = 48.0f;
 int Config::bestEffects = 7;
 int Config::statBarSpacing = 0;
 float Config::fontSize = 18.0f;
@@ -43,8 +45,8 @@ void Config::SaveConfig(const std::string& configFilePath) {
         configToml.insert_or_assign("appearance", toml::table{
                 {"bestEffects", bestEffects},
                 {"maxEffectBars", maxEffectBars},
-                {"bestEffectIconSize", bestEffectIconSize.x},
-                {"dmgTypeIconSize", dmgTypeIconSize.x},
+                {"bestEffectIconSize", bestEffectIconSize},
+                {"dmgTypeIconSize", dmgTypeIconSize},
                 {"statBarSpacing", statBarSpacing},
                 {"hideBlightMadness", hideBlightMadness}
         });
@@ -124,10 +126,8 @@ void Config::LoadConfig(const std::string& configFilePath) {
         opacityUpdated = (opacity != configToml["general"]["opacity"].value_or(opacity));
 
         bestEffects = configToml["appearance"]["bestEffects"].value_or(7);
-        bestEffectIconSize.x = configToml["appearance"]["bestEffectIconSize"].value_or(39);
-        bestEffectIconSize.y = bestEffectIconSize.x * 0.85f;
-        dmgTypeIconSize.x = configToml["appearance"]["dmgTypeIconSize"].value_or(30);
-        dmgTypeIconSize.y = dmgTypeIconSize.x;
+        bestEffectIconSize = configToml["appearance"]["bestEffectIconSize"].value_or(39.0f);
+        dmgTypeIconSize = configToml["appearance"]["dmgTypeIconSize"].value_or(30.0f);
         statBarSpacing = configToml["appearance"]["statBarSpacing"].value_or(0);
         maxEffectBars = configToml["appearance"]["maxEffectBars"].value_or(7);
 
@@ -147,7 +147,7 @@ void Config::LoadConfig(const std::string& configFilePath) {
         }
 
         float iconWidth = statBarSettings.size.y * 1.70f;
-        effectBarIconSize = ImVec2(iconWidth, iconWidth * 0.85f);
+        effectBarIconSize = iconWidth * 0.85f;
 
         auto componentsTable = configToml["components"].as_table();
         if (componentsTable) {
@@ -196,145 +196,185 @@ void Config::LoadConfig(const std::string& configFilePath) {
     }
 }
 
-void Config::CreateConfig(const std::string &configFilePath) {
+void Config::CreateConfig(const std::string& configFilePath) {
     Size barSize = {600, 40};
 
-    try {
-        toml::table configToml;
+    toml::table configToml;
 
-        configToml.insert_or_assign("general", toml::table{
-                {"debug", false},
-                {"dragOverlay", false},
-                {"hideBlightMadness", false},
-                {"fontSize", 18.0f},
-                {"opacity", 0.9f},
-                {"delay", 0}
-        });
+    configToml.insert_or_assign("general", toml::table{
+            {"debug", false},
+            {"dragOverlay", false},
+            {"fontSize", 18.0f},
+            {"opacity", 0.9f},
+            {"delay", 0},
+    });
 
-        configToml.insert_or_assign("appearance", toml::table{
-                {"bestEffects", 7},
-                {"bestEffectIconSize", 39},
-                {"dmgTypeIconSize", 30},
-                {"statBarSpacing", 0},
-                {"maxEffectBars", 7}
-        });
+    configToml.insert_or_assign("appearance", toml::table{
+            {"bestEffects", 7},
+            {"maxEffectBars", 7},
+            {"bestEffectIconSize", 39},
+            {"dmgTypeIconSize", 30},
+            {"statBarSpacing", 0},
+            {"hideBlightMadness", false}
+    });
 
-        toml::table statBar;
-        statBar.insert_or_assign("position", toml::table{
-                {"x", gGameWindowSize.width - barSize.width - 5},
-                {"y", 10}
-        });
-        statBar.insert_or_assign("size", toml::table{
-                {"width", barSize.width},
-                {"height", barSize.height}
-        });
-        configToml.insert_or_assign("statBar", statBar);
+    toml::table statBar;
+    statBar.insert_or_assign("position", toml::table{
+            {"x", 0},
+            {"y", 0}
+    });
+    statBar.insert_or_assign("size", toml::table{
+            {"width", barSize.width},
+            {"height", barSize.height}
+    });
+    configToml.insert_or_assign("statBar", statBar);
 
-        toml::table componentsToml;
-        componentsToml.insert_or_assign("hp", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("fp", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("stamina", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("stagger", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("poison", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("scarletRot", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("hemorrhage", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("deathBlight", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("frostbite", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("sleep", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("madness", toml::table{{"visible", true}, {"hideText", false}});
-        componentsToml.insert_or_assign("bestEffects", true);
-        componentsToml.insert_or_assign("immuneEffects", true);
-        componentsToml.insert_or_assign("dmgTypes", true);
-        componentsToml.insert_or_assign("neutralDmgTypes", false);
-        configToml.insert_or_assign("components", componentsToml);
+    toml::table componentsTable;
+    componentsTable.insert_or_assign("hp", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("fp", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("stamina", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("stagger", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("poison", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("scarletRot", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("hemorrhage", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("deathBlight", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("frostbite", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("sleep", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("madness", toml::table{{"visible", true}, {"hideText", false}});
+    componentsTable.insert_or_assign("bestEffects", true);
+    componentsTable.insert_or_assign("immuneEffects", true);
+    componentsTable.insert_or_assign("dmgTypes", true);
+    componentsTable.insert_or_assign("neutralDmgTypes", false);
+    configToml.insert_or_assign("components", componentsTable);
 
-        std::ofstream configFile(configFilePath);
-        if (!configFile.is_open()) {
-            throw std::runtime_error("Failed to create sv_config.toml");
-        }
-
-        configFile << configToml;
-        configFile.close();
-
-        AddComments(configFilePath);
-    } catch (const std::exception& e) {
-        Logger::Error(std::string("Config::CreateConfig - Error: ") + e.what());
+    std::ofstream configFile(configFilePath);
+    if (!configFile.is_open()) {
+        throw std::runtime_error("Failed to create config file: " + configFilePath);
     }
+
+    configFile << configToml;
+    configFile.close();
+
+    AddComments(configFilePath);
 }
 
-void Config::AddComments(const std::string &configFilePath) {
+void Config::AddComments(const std::string& configFilePath) {
     try {
-        std::ifstream configFile(configFilePath);
-        if (!configFile.is_open()) {
-            throw std::runtime_error("Failed to open " + configFilePath);
+        std::string content;
+
+        std::ifstream fileIn(configFilePath);
+        if (fileIn.is_open()) {
+            std::stringstream buffer;
+            buffer << fileIn.rdbuf();
+            content = buffer.str();
+            fileIn.close();
+        } else {
+            return;
         }
 
-        std::ostringstream buffer;
-        buffer << configFile.rdbuf();
-        std::string content = buffer.str();
-        configFile.close();
+        std::regex pattern("^(\\w+)\\s*=", std::regex::multiline);
+        std::sregex_iterator it(content.begin(), content.end(), pattern);
+        std::sregex_iterator end;
+
+        std::set<std::string> existingKeys;
+        while (it != end) {
+            existingKeys.insert(it->str(1));
+            ++it;
+        }
 
         std::map<std::string, std::string> comments = {
-                // general
-                {"debug", "Enables or disables debug mode. If set to `true`, a console window will open with the game, showing the same information as the one found in the `souls_vision.log`"},
-                {"dragOverlay", "If set to `true`, the overlay can be dragged around the screen by clicking and dragging it"},
-                {"fontSize", "Font size of the text displayed on the bars. Default is `18.0`"},
-                {"opacity", "Opacity of the overlay, from 0.0 (fully transparent) to 1.0 (fully opaque). This option requires the game to be restarted to take effect"},
-                {"delay", "Delay in milliseconds before initializing the overlay. Default is `0`"},
-                // appearance
-                {"bestEffectIconSize", "Size of the best effect icons. Default is `33`"},
-                {"bestEffects", "How many of the best effects to show on the overlay. The effects are sorted (left to right) by the lowest value necessary to trigger them. Default is `7`"},
-                {"dmgTypeIconSize", "Size of the damage type icons. Default is 30."},
-                {"hideBlightMadness", "If true, hides Death Blight and Madness bars for common enemies. Default is false."},
-                {"maxEffectBars", "Maximum number of effect bars to show. Default is 7."},
-                {"statBarSpacing", "Spacing between the bars. Default is 0."},
-                // statBar.position
-                {"x", "Horizontal position of the bar in pixels"},
-                {"y", "Vertical position of the bar in pixels"},
-                // statBar.size
-                {"width", "Width of the bar in pixels"},
-                {"height", "Height of the bar in pixels"},
-                // components
-                {"hp", "HP Bar configuration"},
-                {"fp", "FP Bar configuration"},
-                {"stamina", "Stamina Bar configuration"},
-                {"stagger", "Stagger Bar configuration"},
-                {"poison", "Poison Bar configuration"},
-                {"scarletRot", "Scarlet Rot Bar configuration"},
-                {"hemorrhage", "Hemorrhage Bar configuration"},
-                {"deathBlight", "Death Blight Bar configuration"},
-                {"frostbite", "Frostbite Bar configuration"},
-                {"sleep", "Sleep Bar configuration"},
-                {"madness", "Madness Bar configuration"},
-                {"bestEffects", "If set to `false`, the Best Effects against the enemy will be hidden. Default is `true`"},
-                {"immuneEffects", "If set to `false`, the effects that the enemy is immune to will be hidden. Default is `true`"},
-                {"dmgTypes", "If set to `false`, the Damage Type information will be hidden. Default is `true`"},
-                {"neutralDmgTypes", "If set to `true`, the Neutral Damage Type information will be shown. Default is `false`"},
-                // components.bar
-                {"visible", "If set to `false`, the bar will be hidden. Default is `true`"},
-                {"hideText", "If set to `true`, hides the text displayed on the bar (e.g. “90/219”). Default is `false`"}
+                {"general", "# [General]\n# General settings\n"},
+                {"debug", "# Enable debug mode\n"},
+                {"dragOverlay", "# Enable overlay dragging\n"},
+                {"fontSize", "# Font size for overlay text\n"},
+                {"opacity", "# Overlay opacity (0.0-1.0)\n"},
+                {"delay", "# Delay in milliseconds before overlay starts\n"},
+                {"appearance", "\n# [Appearance]\n# Visual appearance settings\n"},
+                {"bestEffects", "# Number of best effects to display\n"},
+                {"maxEffectBars", "# Maximum effect bars to display\n"},
+                {"bestEffectIconSize", "# Size of effect icons\n"},
+                {"dmgTypeIconSize", "# Size of damage type icons\n"},
+                {"statBarSpacing", "# Spacing between stat bars\n"},
+                {"hideBlightMadness", "# Hide death blight and madness\n"},
+                {"statBar", "\n# [StatBar]\n# Stat bar position and size\n"},
+                {"position", "# Position of stat bars\n"},
+                {"x", "# X coordinate\n"},
+                {"y", "# Y coordinate\n"},
+                {"size", "# Size of stat bars\n"},
+                {"width", "# Bar width\n"},
+                {"height", "# Bar height\n"},
+                {"components", "\n# [Components]\n# Component visibility and settings\n"},
+                {"hp", "# Health points\n"},
+                {"fp", "# Focus points\n"},
+                {"stamina", "# Stamina\n"},
+                {"stagger", "# Stagger\n"},
+                {"poison", "# Poison status\n"},
+                {"scarletRot", "# Scarlet rot status\n"},
+                {"hemorrhage", "# Hemorrhage status\n"},
+                {"deathBlight", "# Death blight status\n"},
+                {"frostbite", "# Frostbite status\n"},
+                {"sleep", "# Sleep status\n"},
+                {"madness", "# Madness status\n"},
+                {"bestEffects", "# Show best effects\n"},
+                {"immuneEffects", "# Show immunity effects\n"},
+                {"dmgTypes", "# Show damage types\n"},
+                {"neutralDmgTypes", "# Show neutral damage types\n"},
+                {"visible", "# Visibility\n"},
+                {"hideText", "# Hide text\n"}
         };
 
-        std::regex configRegex(R"((\w+)\s*=\s*.+)");
-        std::string updatedContent = content;
+        std::stringstream newContent;
+        std::string::iterator contentIt = content.begin();
+        bool newLine = true;
+        bool insertedGeneral = false;
+        bool insertedAppearance = false;
+        bool insertedStatBar = false;
+        bool insertedComponents = false;
 
-        for (const auto& [key, comment] : comments) {
-            std::regex keyRegex(key + R"(\s*=\s*.+)");
-            updatedContent = std::regex_replace(updatedContent, keyRegex, "$&  # " + comment);
+        for (size_t i = 0; i < content.size(); ++i) {
+            if (newLine) {
+                size_t lineEnd = content.find('\n', i);
+                if (lineEnd == std::string::npos) lineEnd = content.size();
+                std::string line = content.substr(i, lineEnd - i);
+
+                std::regex lineRegex("^(\\w+)");
+                std::smatch match;
+                if (std::regex_search(line, match, lineRegex)) {
+                    std::string key = match.str(1);
+
+                    if (key == "general" && !insertedGeneral) {
+                        newContent << comments["general"];
+                        insertedGeneral = true;
+                    } else if (key == "appearance" && !insertedAppearance) {
+                        newContent << comments["appearance"];
+                        insertedAppearance = true;
+                    } else if (key == "statBar" && !insertedStatBar) {
+                        newContent << comments["statBar"];
+                        insertedStatBar = true;
+                    } else if (key == "components" && !insertedComponents) {
+                        newContent << comments["components"];
+                        insertedComponents = true;
+                    } else if (comments.find(key) != comments.end() && comments[key].length() > 1) {
+                        newContent << comments[key];
+                    }
+                }
+                newLine = false;
+            }
+
+            if (content[i] == '\n') {
+                newLine = true;
+            }
+            newContent << content[i];
         }
 
-        std::ofstream outFile(configFilePath);
-        if (!outFile.is_open()) {
-            throw std::runtime_error("Failed to write to " + configFilePath);
+        std::ofstream fileOut(configFilePath);
+        if (fileOut.is_open()) {
+            fileOut << newContent.str();
+            fileOut.close();
         }
-
-        outFile << updatedContent;
-        outFile.close();
-
-        Logger::Info("Comments added to config file successfully.");
     } catch (const std::exception& e) {
         Logger::Error(std::string("Config::AddComments - Error: ") + e.what());
     }
 }
 
-} // souls_vision
+} // namespace souls_vision
