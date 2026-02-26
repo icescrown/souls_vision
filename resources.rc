@@ -1,6 +1,6 @@
 #include "resources.h"
 
-IDR_AGMENA_W1G_FONT RCDATA "fonts/Agmena W1G.ttf"
+IDR_AGMENA_W1G_FONT RCDATA "fonts/FiraCodeRetina.ttf"
 IDR_PNG_BAR RT_PNG "sv_assets/Bar.png"
 IDR_PNG_BARBG RT_PNG "sv_assets/BarBG.png"
 IDR_PNG_BAREDGE RT_PNG "sv_assets/BarEdge.png"

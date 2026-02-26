@@ -51,6 +51,7 @@ private:
     static bool GetBarHideText(BarType type);
     static ImVec4 GetColor0To1(int r, int g, int b, int a);
     static ImFont* LoadFont();
+    static ImFont* LoadDefaultFont();
 
     static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

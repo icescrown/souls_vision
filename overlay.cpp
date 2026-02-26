@@ -1,4 +1,4 @@
-﻿//
+//
 // Created by PC-SAMUEL on 22/11/2024.
 //
 
@@ -227,11 +227,9 @@ void Overlay::InitializeDXResources(IDXGISwapChain3 *pSwapChain) {
 }
 
 void Overlay::InitializeFileResources(ID3D12Device* device) {
-    if (!font_ || Config::fontSizeUpdated) {
-        font_ = LoadFont();
-        Config::fontSizeUpdated = false;
-    }
-
+    // 字体加载延迟到第一次渲染时，避免在DX12未完全初始化时调用Build()
+    // font_ 会在 Render() 中懒加载
+    
     if (textureMap_.empty() || Config::opacityUpdated) {
         LoadAllTexturesResources(device);
         Config::opacityUpdated = false;
@@ -713,7 +711,7 @@ void Overlay::RenderTargets(IDXGISwapChain3 *pSwapChain) {
     commandQueue_->ExecuteCommandLists(1, reinterpret_cast<ID3D12CommandList **>(&commandList_));
 }
 
-void Overlay::Render(IDXGISwapChain3 *pSwapChain) {
+void Overlay::Render(IDXGISwapChain3* pSwapChain) {
     if (commandQueue_ == nullptr) {
         return;
     }
@@ -731,6 +729,32 @@ void Overlay::Render(IDXGISwapChain3 *pSwapChain) {
     if (!ImGui::GetCurrentContext()) {
         device->Release();
         return;
+    }
+
+    // 懒加载字体（延迟到DX12完全初始化后）
+    static bool fontLoaded = false;
+    static bool fontBuildAttempted = false;
+    if (!fontLoaded && !fontBuildAttempted) {
+        fontBuildAttempted = true;
+        Logger::Info("Render: Lazy loading font...");
+        
+        if (!font_ || Config::fontSizeUpdated) {
+            font_ = LoadFont();
+            Config::fontSizeUpdated = false;
+        }
+        
+        if (font_) {
+            Logger::Info("Render: Building fonts...");
+            ImGui::GetIO().Fonts->Build();
+            
+            Logger::Info("Render: Invalidating DX12 device objects...");
+            ImGui_ImplDX12_InvalidateDeviceObjects();
+            
+            fontLoaded = true;
+            Logger::Info("Render: Font loaded and built successfully");
+        } else {
+            Logger::Error("Render: Failed to load any font!");
+        }
     }
 
     InitializeBars(device);
@@ -1195,47 +1219,68 @@ ImVec4 Overlay::GetColor0To1(int r, int g, int b, int a) {
     return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 }
 
+ImFont* Overlay::LoadDefaultFont() {
+    Logger::Info("LoadDefaultFont: Loading ImGui default font");
+    ImFont* font = ImGui::GetIO().Fonts->AddFontDefault();
+    if (font) {
+        Logger::Info("LoadDefaultFont: Default font loaded successfully");
+    } else {
+        Logger::Error("LoadDefaultFont: Failed to load default font!");
+    }
+    return font;
+}
+
 ImFont* Overlay::LoadFont() {
+    Logger::Info("LoadFont: Starting font loading...");
+    
+    // 首先尝试加载打包的字体资源
     HRSRC hResource = FindResource(gModule, MAKEINTRESOURCE(IDR_AGMENA_W1G_FONT), RT_RCDATA);
     if (!hResource) {
-        Logger::Error(std::format("Failed to find font resource. Resource ID: {}", IDR_AGMENA_W1G_FONT));
-        return nullptr;
+        Logger::Warning("LoadFont: Failed to find font resource, will use default font");
+        return LoadDefaultFont();
     }
+    Logger::Info("LoadFont: Font resource found");
 
     HGLOBAL hLoadedResource = LoadResource(gModule, hResource);
     if (!hLoadedResource) {
-        Logger::Error("Failed to load font resource.");
-        return nullptr;
+        Logger::Warning("LoadFont: Failed to load font resource, will use default font");
+        return LoadDefaultFont();
     }
+    Logger::Info("LoadFont: Font resource loaded");
 
     void* pFontData = LockResource(hLoadedResource);
     if (!pFontData) {
-        Logger::Error("Failed to lock font resource.");
-        return nullptr;
+        Logger::Warning("LoadFont: Failed to lock font resource, will use default font");
+        return LoadDefaultFont();
     }
+    Logger::Info("LoadFont: Font resource locked");
 
     DWORD fontSize = SizeofResource(gModule, hResource);
     if (fontSize == 0) {
-        Logger::Error("Font size is zero.");
-        return nullptr;
+        Logger::Warning("LoadFont: Font size is zero, will use default font");
+        return LoadDefaultFont();
     }
+    Logger::Info(std::format("LoadFont: Font size: {}", fontSize));
 
+    // 尝试添加到系统字体（非关键步骤，失败继续）
     DWORD nFonts = 0;
     HANDLE hFont = AddFontMemResourceEx(pFontData, fontSize, NULL, &nFonts);
     if (!hFont) {
-        Logger::Error("Failed to load font into system memory.");
-        return nullptr;
+        Logger::Warning("LoadFont: Failed to add font to system memory, continuing anyway");
+    } else {
+        Logger::Info(std::format("LoadFont: Font added to system memory, nFonts: {}", nFonts));
     }
 
+    // 添加到ImGui（关键步骤）
+    Logger::Info("LoadFont: Adding font to ImGui...");
     ImFont* font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(pFontData, fontSize, Config::fontSize);
     if (!font) {
-        Logger::Error("Failed to add font to ImGui.");
-        return nullptr;
+        Logger::Error("LoadFont: Failed to add font to ImGui, using default font");
+        return LoadDefaultFont();
     }
-    ImGui::GetIO().Fonts->Build();
-    ImGui_ImplDX12_InvalidateDeviceObjects();
-    Logger::Info("Font added to ImGui successfully.");
-
+    
+    Logger::Info("LoadFont: Custom font loaded successfully");
+    // 注意：Build() 和 InvalidateDeviceObjects() 延迟到第一次渲染时调用
     return font;
 }
 
